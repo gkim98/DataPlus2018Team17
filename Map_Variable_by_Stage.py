@@ -113,11 +113,11 @@ d_dvd = {1: temp_dvd_1_l, 2: temp_dvd_2_l, 3: temp_dvd_3_l, 4: temp_dvd_4_l, 'di
 d_va = {1: temp_va_1_l, 2: temp_va_2_l, 3: temp_va_3_l, 4: temp_va_4_l, 'diagnostics': temp_va_diagnostics_l, 'unknown': temp_va_unknown_l}
 
 #diagnostic to check if dictionaries correctly made
-print(len(list(d_dvd.keys())))
-print(len(list(d_va.keys())))
+#print(len(list(d_dvd.keys())))
+#print(len(list(d_va.keys())))
 #print('txgot' in d_va[3])
 
 #print(temp_va_2_l)
 
 #these are in the merged dataset and need to be sorted into stage
-print(['DVD_Act_t1_avg', 'DVD_Act_t2_avg', 'DVD_Act_t2_avg_mc', 'DVD_QOL1_Avghappy', 'DVD_QOL1_general', 'DVD_QOL1_health', 'DVD_QOL4_Avghappy', 'DVD_SDM2_dichot', 'DVD_Txother2', 'DVD_Unnamed: 0', 'DVD_data_num', 'DVD_databeyondt1', 'DVD_datat1', 'Txa2', 'Txb2', 'Txc2', 'VA_Anx102', 'VA_Anx122', 'VA_Anx132', 'VA_Anx22', 'VA_Anx32', 'VA_Anx42', 'VA_Anx82', 'VA_AvailTransc', 'VA_Besttx2', 'VA_Bring2', 'VA_Certainty_tx_EndApt', 'VA_Ch_IL', 'VA_Common2', 'VA_DA1', 'VA_Dahelp2', 'VA_Dahelptx2', 'VA_Dainf2', 'VA_Dalike2', 'VA_Dietx2', 'VA_MD', 'VA_Pbm2', 'VA_Radrec2', 'VA_Read2', 'VA_Recom', 'VA_SDM2', 'VA_Sexact2', 'VA_Sexcomp2', 'VA_Seximp2', 'VA_Sextx2', 'VA_Sharefam2', 'VA_Sharefri2', 'VA_Sharepar2', 'VA_Surgrec2', 'VA_TXother2', 'VA_TxDeferred', 'VA_TxStrongRec', 'VA_Txd2', 'VA_Txf2', 'VA_Txg2', 'VA_Txsec3', 'VA_Unnamed: 0', 'VA_VAsite1', 'VA_Whyww2', 'VA_psa2', 'VA_t3txpref', 'VA_whenrecruit', 'active_surv', 'decision3_vs_received', 'pref_treatment'])
+#print(['DVD_Act_t1_avg', 'DVD_Act_t2_avg', 'DVD_Act_t2_avg_mc', 'DVD_QOL1_Avghappy', 'DVD_QOL1_general', 'DVD_QOL1_health', 'DVD_QOL4_Avghappy', 'DVD_SDM2_dichot', 'DVD_Txother2', 'DVD_Unnamed: 0', 'DVD_data_num', 'DVD_databeyondt1', 'DVD_datat1', 'Txa2', 'Txb2', 'Txc2', 'VA_Anx102', 'VA_Anx122', 'VA_Anx132', 'VA_Anx22', 'VA_Anx32', 'VA_Anx42', 'VA_Anx82', 'VA_AvailTransc', 'VA_Besttx2', 'VA_Bring2', 'VA_Certainty_tx_EndApt', 'VA_Ch_IL', 'VA_Common2', 'VA_DA1', 'VA_Dahelp2', 'VA_Dahelptx2', 'VA_Dainf2', 'VA_Dalike2', 'VA_Dietx2', 'VA_MD', 'VA_Pbm2', 'VA_Radrec2', 'VA_Read2', 'VA_Recom', 'VA_SDM2', 'VA_Sexact2', 'VA_Sexcomp2', 'VA_Seximp2', 'VA_Sextx2', 'VA_Sharefam2', 'VA_Sharefri2', 'VA_Sharepar2', 'VA_Surgrec2', 'VA_TXother2', 'VA_TxDeferred', 'VA_TxStrongRec', 'VA_Txd2', 'VA_Txf2', 'VA_Txg2', 'VA_Txsec3', 'VA_Unnamed: 0', 'VA_VAsite1', 'VA_Whyww2', 'VA_psa2', 'VA_t3txpref', 'VA_whenrecruit', 'active_surv', 'decision3_vs_received', 'pref_treatment'])
