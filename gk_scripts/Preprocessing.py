@@ -14,6 +14,7 @@
 
 import nltk
 import string
+from tqdm import tqdm_notebook as tqdm
 from nltk.corpus import stopwords
 from nltk.corpus import wordnet as wn
 nltk.download('wordnet')
