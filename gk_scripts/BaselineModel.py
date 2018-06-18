@@ -7,10 +7,14 @@ import pandas as pd
 from tqdm import tqdm_notebook as tqdm
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
-from sklearn.model_selection import  GridSearchCV
+from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.metrics import precision_score, recall_score
+from sklearn import preprocessing
 
+# silences package warnings
+import warnings
+warnings.filterwarnings('ignore')
 
 GRID_DEFAULT = {
     'C': [0.1,1, 10, 100, 1000], 
@@ -94,6 +98,10 @@ def model_dataframe(df):
     df = df.copy()
     model_df = df[['gleason', 'age', 'active_surv']]
     clean_df = model_df.dropna()
+
+    # normalize the data
+    clean_df['age'] = preprocessing.scale(clean_df['age'])
+
     return clean_df
 
 

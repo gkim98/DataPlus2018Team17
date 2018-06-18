@@ -131,3 +131,14 @@ def text_preprocessing(text, steps):
         words = steps[i](words)
     
     return words
+
+
+"""
+    Preprocesses corpus
+
+    input: corpus as list of strings, pipeline of steps
+    output: preprocessed corpus as list of tokenized lists
+"""
+def process_corpus(corpus, steps):
+    pre_corpus = [text_preprocessing(text, steps) for text in tqdm(corpus)]
+    return pre_corpus
