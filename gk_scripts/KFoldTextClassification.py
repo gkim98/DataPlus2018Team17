@@ -33,22 +33,41 @@ def strat_kfold_text(df, grid_search=True, hyp_params=GRID_DEFAULT, folds=3, ite
     avg_neg_recall=0
 
     X = df['Convo_1'].as_matrix()
-    y = df['active_surv'].as_matrix()
+    y = df['txgot_binary'].as_matrix()
+
+    # keeps track of decision 
+    dec_values = np.zeros(X.size)
 
     rskf = RepeatedStratifiedKFold(n_splits=folds, n_repeats=iterations)
     for train_index, test_index in tqdm(rskf.split(X, y)):
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
-        tn, fp, fn, tp = train_text(X_train, y_train, X_test, y_test, grid_search, hyp_params)
+        (tn, fp, fn, tp), decision_function = train_text(X_train, y_train, X_test, y_test, grid_search, hyp_params)
+
+        # aggregating decision function values
+        dec_result = decision_function(X_test)
+        for i in range(len(test_index)):
+            dec_values[test_index[i]] += dec_result[i]
+
+        # aggregrating evaluation metrics
         avg_pos_precision += tp / (tp + fp)
         avg_pos_recall += tp / (tp + fn)
         avg_neg_precision += tn / (tn + fn)
         avg_neg_recall += tn / (tn + fp)
 
+    # takes averages
     avg_pos_precision /= (iterations * folds)
     avg_pos_recall /= (iterations * folds)
     avg_neg_precision /= (iterations * folds)
     avg_neg_recall /= (iterations * folds)
+    dec_values /= iterations
+
+    metrics = {
+        "positive precision": avg_pos_precision,
+        "positive recall": avg_pos_recall,
+        "negative precision": avg_neg_precision,
+        "negative recall": avg_neg_recall
+    }
 
     if print_results:
         print('AVG METRICS:\n')
@@ -57,7 +76,7 @@ def strat_kfold_text(df, grid_search=True, hyp_params=GRID_DEFAULT, folds=3, ite
         print('Treatment Class Precision: {}\n'.format(round(avg_neg_precision, 3)))
         print('Treatment Class Recall: {}\n'.format(round(avg_neg_recall, 3)))
 
-    return avg_pos_precision, avg_pos_recall, avg_neg_precision, avg_neg_recall
+    return dec_values, metrics
 
 
 """
@@ -79,5 +98,10 @@ def train_text(X_train, y_train, X_test, y_test, grid_search, hyp_params):
 
     predictions = model.predict(X_test)
     metrics = confusion_matrix(y_test, predictions).ravel()
-    return metrics
+
+    # returns decision function
+    decision_function = model.decision_function
+
+    print(metrics)
+    return metrics, decision_function
 

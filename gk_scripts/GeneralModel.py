@@ -2,11 +2,14 @@
     This will compile ideas from other model scripts into a general model that can take any features
 """
 
+import numpy as np
 import pandas as pd
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.svm import SVC
 from tqdm import tqdm_notebook as tqdm
 from sklearn.model_selection import GridSearchCV
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix
 from sklearn import preprocessing
 
@@ -27,6 +30,7 @@ GRID_DEFAULT = {
     
     input:
         - df: data for the model
+        - algorithm: type of algorithm for training model (svm, rf, lr)
         - pred_var: name of the target variable
         - hyp_params: parameters for grid search
         - folds: folds for cross-validation
@@ -37,17 +41,27 @@ GRID_DEFAULT = {
         - F-score of model
         - dictionary of metrics
 """
-def general_model(df, pred_var='active_surv', hyp_params=GRID_DEFAULT, folds=3, iterations=1, print_results=True, tqdm_on=True):
+def general_model(df, algorithm='svm', pred_var='txgot_binary', folds=10, iterations=3, print_results=True, tqdm_on=True):
     avg_pos_prec = 0
     avg_pos_rec = 0
     avg_neg_prec = 0
     avg_neg_rec = 0
+
+    # maps algorithm parameter to algorithm function
+    alg_map = {
+        'svm': train_svm_model,
+        'rf': train_rf_model,
+        'lr': train_lr_model
+    }
 
     # treats every non-target variable as a feature
     feat_vars = [var for var in list(df.columns) if var != pred_var]
 
     X = df[feat_vars].as_matrix()
     y = df[pred_var].as_matrix()
+
+    # keeps track of feature importance/coefficients
+    feat_info = np.zeros((1, len(df[feat_vars].columns)))
 
     rskf = RepeatedStratifiedKFold(n_splits=folds, n_repeats=iterations)
     # toggles tqdm
@@ -56,7 +70,10 @@ def general_model(df, pred_var='active_surv', hyp_params=GRID_DEFAULT, folds=3, 
     for train_index, test_index in splits:
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
-        tn, fp, fn, tp = train_model(X_train, y_train, X_test, y_test, hyp_params)
+        (tn, fp, fn, tp), weights = alg_map[algorithm](X_train, y_train, X_test, y_test)
+
+        if weights.all():
+            feat_info += weights
 
         avg_pos_prec += tp / (tp + fp)
         avg_pos_rec += tp / (tp + fn)
@@ -69,12 +86,22 @@ def general_model(df, pred_var='active_surv', hyp_params=GRID_DEFAULT, folds=3, 
     avg_neg_prec /= (folds * iterations)
     avg_neg_rec /= (folds * iterations)
 
+    # gets average of weights and displays
+    if weights.all():
+        if algorithm == 'lr':
+            weights = weights[0]
+        feat_info /= (folds * iterations)
+        feat_importance_df = pd.DataFrame({"Feature": df[feat_vars].columns, "Weight": np.transpose(weights)})
+        print(feat_importance_df)
+        print()
+
+
     if print_results:
-        print('Average Metrics:\n')
-        print('Positive Class Precision: {}\n'.format(round(avg_pos_prec, 3)))
-        print('Positive Class Recall: {}\n'.format(round(avg_pos_rec, 3)))
-        print('Negative Class Precision: {}\n'.format(round(avg_neg_prec, 3)))
-        print('Negative Class Recall: {}\n'.format(round(avg_neg_rec, 3)))
+        print('Average Metrics:')
+        print('Positive Class Precision: {}'.format(round(avg_pos_prec, 3)))
+        print('Positive Class Recall: {}'.format(round(avg_pos_rec, 3)))
+        print('Negative Class Precision: {}'.format(round(avg_neg_prec, 3)))
+        print('Negative Class Recall: {}'.format(round(avg_neg_rec, 3)))
 
     metrics = {
         'positive precision': avg_pos_prec,
@@ -87,16 +114,46 @@ def general_model(df, pred_var='active_surv', hyp_params=GRID_DEFAULT, folds=3, 
     return fscore, metrics
 
 
-# trains one iteration of model
-def train_model(X_train, y_train, X_test, y_test, hyp_params):
+
+"""
+    Model training for different algorithms
+"""
+# trains one iteration of svm model
+def train_svm_model(X_train, y_train, X_test, y_test, *args):
     # trains model
-    model = GridSearchCV(SVC(), hyp_params, refit=True)
+    model = GridSearchCV(SVC(), GRID_DEFAULT, refit=True)
     model.fit(X_train, y_train)
 
     # make predictions and evaluate
     predictions = model.predict(X_test)
     metrics = confusion_matrix(y_test, predictions).ravel()
-    return metrics
+    return metrics, None
+
+# trains one iteration of random forest model
+def train_rf_model(X_train, y_train, X_test, y_test, *args):
+    model = RandomForestClassifier(n_estimators=100)
+    model.fit(X_train, y_train)
+
+    # displays feature importances
+    feat_importances = model.feature_importances_
+
+    predictions = model.predict(X_test)
+    metrics = confusion_matrix(y_test, predictions).ravel()
+    return metrics, feat_importances
+
+
+# trains one iteration of 
+def train_lr_model(X_train, y_train, X_test, y_test, *args):
+    model = LogisticRegression()
+    model.fit(X_train, y_train)
+
+    # displays coefficients of the features
+    coefficients = np.asarray(model.coef_)
+
+    predictions = model.predict(X_test)
+    metrics = confusion_matrix(y_test, predictions).ravel()
+    return metrics, coefficients
+    
 
 
 """
@@ -113,7 +170,7 @@ def train_model(X_train, y_train, X_test, y_test, hyp_params):
 
     ADD SOMETHING TO CONTROL DROPPING OF NA VALUES
 """
-def prepare_df(df, cont_vars=['age'], cat_vars=['gleason'], target_var='active_surv', print_dims=True):
+def prepare_df(df, cont_vars=['age'], cat_vars=['gleason'], target_var='txgot_binary', print_dims=True):
     total_vars = cont_vars + cat_vars + [target_var]
     model_df = df[total_vars]
     cleaned_df = model_df.dropna(subset=total_vars)
