@@ -11,6 +11,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix
+from sklearn.metrics import roc_curve, auc
 from sklearn import preprocessing
 
 # silences package warnings
@@ -37,15 +38,17 @@ GRID_DEFAULT = {
         - iterations: repititions of kfold cross-validation
         - print_results: whether to print results
         - tqdm_on: whether to use tqdm progress bar
+        - find_auc: whether to calculate the AUC
     output:
         - F-score of model
         - dictionary of metrics
 """
-def general_model(df, algorithm='svm', pred_var='txgot_binary', folds=10, iterations=3, print_results=True, tqdm_on=True):
+def general_model(df, algorithm='svm', pred_var='txgot_binary', folds=10, iterations=3, print_results=True, tqdm_on=True, find_auc=True):
     avg_pos_prec = 0
     avg_pos_rec = 0
     avg_neg_prec = 0
     avg_neg_rec = 0
+    auc_score = 0
 
     # maps algorithm parameter to algorithm function
     alg_map = {
@@ -70,10 +73,10 @@ def general_model(df, algorithm='svm', pred_var='txgot_binary', folds=10, iterat
     for train_index, test_index in splits:
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
-        (tn, fp, fn, tp), weights = alg_map[algorithm](X_train, y_train, X_test, y_test)
+        (tn, fp, fn, tp), weights, temp_auc = alg_map[algorithm](X_train, y_train, X_test, y_test, auc)
 
-        if weights.all():
-            feat_info += weights
+        if algorithm != 'svm' : feat_info += weights
+        if find_auc : auc_score += temp_auc
 
         avg_pos_prec += tp / (tp + fp)
         avg_pos_rec += tp / (tp + fn)
@@ -85,16 +88,18 @@ def general_model(df, algorithm='svm', pred_var='txgot_binary', folds=10, iterat
     avg_pos_rec /= (folds * iterations)
     avg_neg_prec /= (folds * iterations)
     avg_neg_rec /= (folds * iterations)
+    if find_auc : auc_score /= (folds * iterations)
 
     # gets average of weights and displays
-    if weights.all():
-        if algorithm == 'lr':
-            weights = weights[0]
+    if algorithm != 'svm':
+        if algorithm == 'lr' : weights = weights[0]
         feat_info /= (folds * iterations)
         feat_importance_df = pd.DataFrame({"Feature": df[feat_vars].columns, "Weight": np.transpose(weights)})
         print(feat_importance_df)
         print()
 
+    # calculate fscore
+    fscore = (2 * avg_pos_prec * avg_pos_rec) / (avg_pos_prec + avg_pos_rec)
 
     if print_results:
         print('Average Metrics:')
@@ -102,6 +107,9 @@ def general_model(df, algorithm='svm', pred_var='txgot_binary', folds=10, iterat
         print('Positive Class Recall: {}'.format(round(avg_pos_rec, 3)))
         print('Negative Class Precision: {}'.format(round(avg_neg_prec, 3)))
         print('Negative Class Recall: {}'.format(round(avg_neg_rec, 3)))
+        
+    print('\nF-score: {}'.format(round(fscore, 3)))
+    if find_auc : print('AUC: {}'.format(round(auc_score, 3)))
 
     metrics = {
         'positive precision': avg_pos_prec,
@@ -109,17 +117,18 @@ def general_model(df, algorithm='svm', pred_var='txgot_binary', folds=10, iterat
         'negative precision': avg_neg_prec,
         'negative recall': avg_neg_rec 
     }
-    fscore = (2 * avg_pos_prec * avg_pos_rec) / (avg_pos_prec + avg_pos_rec)
 
-    return fscore, metrics
+    return fscore, metrics, auc_score
 
 
+##########################################################################################################
+##########################################################################################################
 
 """
     Model training for different algorithms
 """
 # trains one iteration of svm model
-def train_svm_model(X_train, y_train, X_test, y_test, *args):
+def train_svm_model(X_train, y_train, X_test, y_test, find_auc):
     # trains model
     model = GridSearchCV(SVC(), GRID_DEFAULT, refit=True)
     model.fit(X_train, y_train)
@@ -127,10 +136,14 @@ def train_svm_model(X_train, y_train, X_test, y_test, *args):
     # make predictions and evaluate
     predictions = model.predict(X_test)
     metrics = confusion_matrix(y_test, predictions).ravel()
-    return metrics, None
+
+    # finds AUC
+    auc_score = calc_auc(y_test, predictions) if find_auc else None
+
+    return metrics, None, auc_score
 
 # trains one iteration of random forest model
-def train_rf_model(X_train, y_train, X_test, y_test, *args):
+def train_rf_model(X_train, y_train, X_test, y_test, find_auc):
     model = RandomForestClassifier(n_estimators=100)
     model.fit(X_train, y_train)
 
@@ -139,11 +152,14 @@ def train_rf_model(X_train, y_train, X_test, y_test, *args):
 
     predictions = model.predict(X_test)
     metrics = confusion_matrix(y_test, predictions).ravel()
-    return metrics, feat_importances
+
+    auc_score = calc_auc(y_test, predictions) if find_auc else None
+
+    return metrics, feat_importances, auc_score
 
 
 # trains one iteration of 
-def train_lr_model(X_train, y_train, X_test, y_test, *args):
+def train_lr_model(X_train, y_train, X_test, y_test, find_auc):
     model = LogisticRegression()
     model.fit(X_train, y_train)
 
@@ -152,9 +168,21 @@ def train_lr_model(X_train, y_train, X_test, y_test, *args):
 
     predictions = model.predict(X_test)
     metrics = confusion_matrix(y_test, predictions).ravel()
-    return metrics, coefficients
-    
 
+    auc_score = calc_auc(y_test, predictions) if find_auc else None
+
+    return metrics, coefficients, auc_score
+
+
+# calculates auc
+def calc_auc(y_test, predictions):
+    fpr, tpr, _ = roc_curve(y_test, predictions, pos_label=1)
+    auc_score = auc(fpr, tpr)
+    return auc_score
+
+    
+##########################################################################################################
+##########################################################################################################
 
 """
     Prepares a dataframe for general_model
