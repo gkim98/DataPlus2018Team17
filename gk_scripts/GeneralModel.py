@@ -36,14 +36,17 @@ GRID_DEFAULT = {
         - hyp_params: parameters for grid search
         - folds: folds for cross-validation
         - iterations: repititions of kfold cross-validation
-        - print_results: whether to print results
+        - print_metrics: whether to print fscore and AUC
+        - print_feat: whether to print feature importance
+        - print_pr: whether to print precision and recall scores
         - tqdm_on: whether to use tqdm progress bar
         - find_auc: whether to calculate the AUC
     output:
         - F-score of model
         - dictionary of metrics
 """
-def general_model(df, algorithm='svm', pred_var='txgot_binary', folds=10, iterations=3, print_results=True, tqdm_on=True, find_auc=True):
+def general_model(df, algorithm='rf', pred_var='txgot_binary', folds=10, iterations=3, 
+        print_metrics=True, print_feat=False, print_pr=False, tqdm_on=True, find_auc=True):
     avg_pos_prec = 0
     avg_pos_rec = 0
     avg_neg_prec = 0
@@ -78,7 +81,7 @@ def general_model(df, algorithm='svm', pred_var='txgot_binary', folds=10, iterat
         if algorithm != 'svm' : feat_info += weights
         if find_auc : auc_score += temp_auc
 
-        avg_pos_prec += tp / (tp + fp)
+        if (tp + fp) != 0: avg_pos_prec += tp / (tp + fp)
         avg_pos_rec += tp / (tp + fn)
         avg_neg_prec += tn / (tn + fn)
         avg_neg_rec += tn / (tn + fp)
@@ -95,30 +98,36 @@ def general_model(df, algorithm='svm', pred_var='txgot_binary', folds=10, iterat
         if algorithm == 'lr' : weights = weights[0]
         feat_info /= (folds * iterations)
         feat_importance_df = pd.DataFrame({"Feature": df[feat_vars].columns, "Weight": np.transpose(weights)})
+    
+    # print feature importance info
+    if print_feat:
         print(feat_importance_df)
         print()
 
     # calculate fscore
     fscore = (2 * avg_pos_prec * avg_pos_rec) / (avg_pos_prec + avg_pos_rec)
 
-    if print_results:
+    # print precision recall scores
+    if print_pr:
         print('Average Metrics:')
         print('Positive Class Precision: {}'.format(round(avg_pos_prec, 3)))
         print('Positive Class Recall: {}'.format(round(avg_pos_rec, 3)))
         print('Negative Class Precision: {}'.format(round(avg_neg_prec, 3)))
         print('Negative Class Recall: {}'.format(round(avg_neg_rec, 3)))
         
-    print('\nF-score: {}'.format(round(fscore, 3)))
-    if find_auc : print('AUC: {}'.format(round(auc_score, 3)))
+    # print fscore and AUC
+    if print_metrics:
+        print('\nF-score: {}'.format(round(fscore, 3)))
+        if find_auc : print('AUC: {}'.format(round(auc_score, 3)))
 
-    metrics = {
+    pr_scores = {
         'positive precision': avg_pos_prec,
         'positive recall': avg_pos_rec,
         'negative precision': avg_neg_prec,
         'negative recall': avg_neg_rec 
     }
 
-    return fscore, metrics, auc_score
+    return fscore, pr_scores, auc_score, feat_importance_df
 
 
 ##########################################################################################################
