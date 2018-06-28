@@ -63,10 +63,10 @@ def model_evaluation(df, min_feats=1, sort=None, algorithm='rf', cat_vars=[], co
                                                    'auc': auc_score, 'num_features': num_feats, 'feat_importance': import_string}, index=[0]))
     
     # sorts dataframe in descending order of desired metric
-    if sort is not None : results = results.sort_values(sort, ascending=False)
-        
-    # columns in right order
-    col_order = [sort, 'features'] + [col for col in results.columns if col not in [sort, 'features']]
-    results = results[col_order]
+    if sort is not None: 
+        results = results.sort_values(sort, ascending=False)
+        # columns in right order
+        col_order = [sort, 'features'] + [col for col in results.columns if col not in [sort, 'features']]
+        results = results[col_order]
     
     return results

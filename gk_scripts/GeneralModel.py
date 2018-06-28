@@ -207,7 +207,7 @@ def calc_auc(y_test, predictions):
 
     ADD SOMETHING TO CONTROL DROPPING OF NA VALUES
 """
-def prepare_df(df, cont_vars=['age'], cat_vars=['gleason'], target_var='txgot_binary', print_dims=True):
+def prepare_df(df, cont_vars=[], cat_vars=['gleason'], target_var='txgot_binary', print_dims=True):
     total_vars = cont_vars + cat_vars + [target_var]
     model_df = df[total_vars]
     cleaned_df = model_df.dropna(subset=total_vars)
