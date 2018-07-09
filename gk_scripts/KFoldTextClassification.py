@@ -32,8 +32,8 @@ def strat_kfold_text(df, grid_search=True, hyp_params=GRID_DEFAULT, folds=3, ite
     avg_neg_precision=0
     avg_neg_recall=0
 
-    X = df['Convo_1'].as_matrix()
-    y = df['txgot_binary'].as_matrix()
+    X = df['Convo_1'].values
+    y = df['txgot_binary'].values
 
     # keeps track of decision 
     dec_values = np.zeros(X.size)
